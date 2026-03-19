@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultrasonic Sensor · Pico Learning Series</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #00c8ff;
+    --accent-dim: #0090bb;
+    --accent-glow: rgba(0,200,255,0.12);
+    --bg: #020a0f; --bg2: #040f18; --bg3: #071520;
+    --surface: #091a26; --border: rgba(0,200,255,0.12);
+    --text: #d0eeff; --text-dim: #6fa0bb; --text-muted: #2d5a70;
+    --green: #00ff88;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:1000}
+
+  .series-bar{background:rgba(2,10,15,0.95);border-bottom:1px solid var(--border);padding:0.5rem 3rem;display:flex;align-items:center;gap:1.5rem;position:sticky;top:0;z-index:200;backdrop-filter:blur(12px)}
+  .series-label{font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.2em;white-space:nowrap}
+  .series-links{display:flex;gap:0.75rem;flex-wrap:wrap}
+  .series-link{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;padding:0.25rem 0.6rem;border-radius:2px;text-decoration:none;border:1px solid rgba(255,255,255,0.06);color:var(--text-muted);transition:all 0.2s;text-transform:uppercase;letter-spacing:0.06em}
+  .series-link:hover,.series-link.active{border-color:var(--accent);color:var(--accent)}
+  .series-link.active{background:var(--accent-glow)}
+  .series-link.portfolio{margin-left:auto;color:#7aad91;border-color:rgba(0,255,136,0.2)}
+  .series-link.portfolio:hover{color:var(--green);border-color:var(--green)}
+
+  .hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:5rem 3rem 3rem;gap:4rem}
+  .hero-tag{display:inline-flex;align-items:center;gap:0.6rem;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:0.4rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:1.5rem}
+  .hero-tag::before{content:'';width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .hero-num{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--text-muted);letter-spacing:0.2em;margin-bottom:0.5rem}
+  .hero-title{font-size:clamp(2.5rem,5vw,4.5rem);font-weight:800;line-height:1.05;letter-spacing:-0.03em;margin-bottom:1rem}
+  .hero-title em{font-style:normal;color:var(--accent);display:block;text-shadow:0 0 30px rgba(0,200,255,0.3)}
+  .hero-sub{font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--text-dim);letter-spacing:0.08em;margin-bottom:1.5rem}
+  .hero-learn{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1.25rem 1.5rem;margin-bottom:2rem}
+  .learn-title{font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:0.75rem}
+  .learn-item{font-size:0.82rem;color:var(--text-dim);line-height:1.7;padding-left:1rem;position:relative}
+  .learn-item::before{content:'→';position:absolute;left:0;color:var(--accent)}
+  .hero-btns{display:flex;gap:0.75rem;flex-wrap:wrap}
+  .btn-primary{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;padding:0.55rem 1.25rem;background:var(--accent);color:#020a0f;border-radius:2px;text-decoration:none;font-weight:700;letter-spacing:0.05em;transition:opacity 0.2s}
+  .btn-primary:hover{opacity:0.85}
+  .btn-ghost{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;padding:0.55rem 1.25rem;border:1px solid var(--border);color:var(--text-dim);border-radius:2px;text-decoration:none;letter-spacing:0.05em;transition:all 0.2s}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* SONAR DEMO */
+  .sonar-demo{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:1.5rem;text-align:center}
+  .demo-label{font-family:'IBM Plex Mono',monospace;font-size:0.58rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.25em;margin-bottom:1.25rem}
+  .sonar-svg-wrap{position:relative;margin:0 auto 1rem;width:260px;height:200px}
+  .dist-readout{display:flex;justify-content:center;gap:2rem;margin-bottom:1rem}
+  .dist-val{text-align:center}
+  .dist-num{font-family:'IBM Plex Mono',monospace;font-size:1.8rem;color:var(--accent);font-weight:700;line-height:1;text-shadow:0 0 15px rgba(0,200,255,0.4)}
+  .dist-unit{font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.2em;margin-top:0.2rem}
+  .dist-slider{width:100%;-webkit-appearance:none;height:4px;background:var(--bg3);border-radius:2px;outline:none;margin-bottom:0.5rem}
+  .dist-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 10px rgba(0,200,255,0.4)}
+  .slider-label{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;color:var(--text-muted);text-align:center;letter-spacing:0.1em}
+
+  section{position:relative;z-index:1;padding:5rem 3rem}
+  .section-divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:0 3rem}
+  .section-header{text-align:center;margin-bottom:3.5rem}
+  .section-num{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--accent);letter-spacing:0.3em;text-transform:uppercase;margin-bottom:0.75rem;opacity:0.8}
+  .section-title{font-size:clamp(1.8rem,3.5vw,3rem);font-weight:800;letter-spacing:-0.03em;line-height:1.1}
+  .section-title em{font-style:normal;color:var(--accent)}
+  .alt-bg{background:var(--bg2)}
+
+  .concept-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5rem}
+  .concept-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1.5rem;transition:border-color 0.3s,transform 0.3s}
+  .concept-card:hover{border-color:rgba(0,200,255,0.3);transform:translateY(-3px)}
+  .cc-icon{font-size:1.8rem;margin-bottom:1rem}
+  .cc-title{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.6rem}
+  .cc-body{font-size:0.85rem;color:var(--text-dim);line-height:1.7}
+  .cc-tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--accent);border:1px solid var(--border);padding:0.2rem 0.5rem;border-radius:2px;margin-top:0.75rem;text-transform:uppercase;letter-spacing:0.1em}
+
+  .timing-explain{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:start}
+  .timing-box{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:1.5rem}
+  .timing-title{font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:1.25rem}
+  .timing-row{display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem}
+  .timing-label{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--accent);width:50px;flex-shrink:0}
+  .timing-line{flex:1;height:24px}
+
+  .code-block{background:var(--bg);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .code-header{display:flex;justify-content:space-between;align-items:center;padding:0.6rem 1rem;background:var(--surface);border-bottom:1px solid var(--border)}
+  .code-dots{display:flex;gap:5px}
+  .code-dot{width:9px;height:9px;border-radius:50%}
+  .code-dot:nth-child(1){background:#ff5f57}.code-dot:nth-child(2){background:#ffbd2e}.code-dot:nth-child(3){background:#28c840}
+  .code-fname{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--text-muted)}
+  pre{padding:1.25rem;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;line-height:1.7;color:var(--text-dim);max-height:380px;overflow-y:auto}
+  pre::-webkit-scrollbar{width:5px;height:5px}pre::-webkit-scrollbar-track{background:var(--bg3)}pre::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .kw{color:#ff79c6}.fn{color:#50fa7b}.cm{color:#5a6a8a;font-style:italic}.nm{color:#ffb700}.st{color:#f1fa8c}.pp{color:#ff8c69}.nu{color:#bd93f9}
+
+  footer{padding:2.5rem 3rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .footer-l{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--text-muted)}
+  .footer-l strong{color:var(--accent)}
+  .footer-r{display:flex;gap:1.5rem}
+  .footer-r a{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--text-muted);text-decoration:none;text-transform:uppercase;letter-spacing:0.1em;transition:color 0.2s}
+  .footer-r a:hover{color:var(--accent)}
+
+  .reveal{opacity:0;transform:translateY(25px);transition:opacity 0.7s ease,transform 0.7s ease}
+  .reveal.visible{opacity:1;transform:none}
+  @media(max-width:768px){.hero{grid-template-columns:1fr;padding:4rem 1.5rem 3rem}.hero-right{display:none}section{padding:4rem 1.5rem}.concept-grid{grid-template-columns:1fr}.timing-explain{grid-template-columns:1fr}.series-bar{padding:0.5rem 1rem}footer{flex-direction:column;gap:1.5rem;text-align:center}}
+</style>
+</head>
+<body>
+
+<div class="series-bar">
+  <div class="series-label">🍓 Pico Series</div>
+  <div class="series-links">
+    <a class="series-link" href="../lcd-rpi-pico/">LCD Display</a>
+    <a class="series-link" href="../interrupt-rpi-pico/">Interrupts</a>
+    <a class="series-link active" href="#">Ultrasonic</a>
+    <a class="series-link" href="../keypad-rpi-pico/">Keypad</a>
+    <a class="series-link" href="../potentiometer-rpi-pico/">Potentiometer</a>
+    <a class="series-link portfolio" href="https://senthilvel-k.github.io/">← Portfolio</a>
+  </div>
+</div>
+
+<section class="hero" id="top">
+  <div>
+    <div class="hero-tag">Episode 03 · Pico Learning Series</div>
+    <div class="hero-num">// CONCEPT: ADC + PULSE TIMING</div>
+    <h1 class="hero-title">Ultrasonic<em>Distance Sensor</em></h1>
+    <div class="hero-sub">HC-SR04 · TRIG/ECHO · Pulse Width → cm/inch</div>
+    <div class="hero-learn">
+      <div class="learn-title">// What you'll learn</div>
+      <div class="learn-item">How sound waves measure distance (time-of-flight)</div>
+      <div class="learn-item">How to generate a 10µs TRIG pulse to fire the sensor</div>
+      <div class="learn-item">How to measure ECHO pulse width in microseconds</div>
+      <div class="learn-item">Converting pulse time → cm and inches with the speed of sound</div>
+    </div>
+    <div class="hero-btns">
+      <a href="https://github.com/senthilvel-k/ultrasonic-rpi-pico" target="_blank" class="btn-primary">GitHub Repo ↗</a>
+      <a href="https://senthilvel-k.github.io/#projects" class="btn-ghost">← All Projects</a>
+    </div>
+  </div>
+
+  <div class="sonar-demo">
+    <div class="demo-label">// Interactive Distance Simulator</div>
+    <div class="sonar-svg-wrap">
+      <canvas id="sonar-canvas" width="260" height="200"></canvas>
+    </div>
+    <div class="dist-readout">
+      <div class="dist-val">
+        <div class="dist-num" id="dist-cm">20</div>
+        <div class="dist-unit">centimeters</div>
+      </div>
+      <div class="dist-val">
+        <div class="dist-num" id="dist-inch">7.9</div>
+        <div class="dist-unit">inches</div>
+      </div>
+      <div class="dist-val">
+        <div class="dist-num" id="dist-us">1160</div>
+        <div class="dist-unit">µs echo</div>
+      </div>
+    </div>
+    <input type="range" class="dist-slider" id="dist-range" min="2" max="100" value="20">
+    <div class="slider-label">← Move slider to change distance →</div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section id="concept">
+  <div class="section-header reveal">
+    <div class="section-num">// 01 — Core Concepts</div>
+    <h2 class="section-title">How <em>Sound Measures</em> Distance</h2>
+  </div>
+  <div class="concept-grid">
+    <div class="concept-card reveal">
+      <div class="cc-icon">📡</div>
+      <div class="cc-title">Time-of-Flight Principle</div>
+      <div class="cc-body">The HC-SR04 emits a burst of 40 kHz ultrasonic pulses and measures how long they take to bounce back. Distance = (time × speed of sound) ÷ 2. The ÷ 2 accounts for the round trip — there and back.</div>
+      <div class="cc-tag">Physics</div>
+    </div>
+    <div class="concept-card reveal" style="transition-delay:0.1s">
+      <div class="cc-icon">⚡</div>
+      <div class="cc-title">TRIG Pulse — Fire!</div>
+      <div class="cc-body">To start a measurement: pull TRIG HIGH for ≥10µs, then LOW. This tells the sensor to emit 8 ultrasonic pulses. The Pico does this with gpio_put() and sleep_us(10).</div>
+      <div class="cc-tag">gpio_put() + sleep_us(10)</div>
+    </div>
+    <div class="concept-card reveal" style="transition-delay:0.2s">
+      <div class="cc-icon">📏</div>
+      <div class="cc-title">ECHO Pulse — Measure!</div>
+      <div class="cc-body">ECHO goes HIGH when the pulses are sent and stays HIGH until the echo returns. The Pico counts microseconds while ECHO is HIGH using a tight loop — that duration is proportional to distance.</div>
+      <div class="cc-tag">gpio_get() + width++</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section class="alt-bg" id="protocol">
+  <div class="section-header reveal">
+    <div class="section-num">// 02 — Signal Timing</div>
+    <h2 class="section-title">The <em>TRIG / ECHO</em> Protocol</h2>
+  </div>
+  <div class="timing-explain">
+    <div class="reveal">
+      <div class="timing-box" style="margin-bottom:1.5rem">
+        <div class="timing-title">// Signal Diagram</div>
+        <div class="timing-row">
+          <div class="timing-label">TRIG</div>
+          <div class="timing-line">
+            <svg width="100%" height="24" viewBox="0 0 260 24" preserveAspectRatio="none">
+              <polyline points="0,20 40,20 40,4 56,4 56,20 260,20" stroke="#00c8ff" stroke-width="1.5" fill="none"/>
+              <text x="42" y="16" font-family="monospace" font-size="7" fill="#2d5a70">10µs</text>
+            </svg>
+          </div>
+        </div>
+        <div class="timing-row">
+          <div class="timing-label">ECHO</div>
+          <div class="timing-line">
+            <svg width="100%" height="24" viewBox="0 0 260 24" preserveAspectRatio="none">
+              <polyline points="0,20 60,20 60,4 180,4 180,20 260,20" stroke="#00c8ff" stroke-width="1.5" fill="none"/>
+              <rect x="60" y="4" width="120" height="16" fill="rgba(0,200,255,0.08)" stroke="none"/>
+              <text x="95" y="16" font-family="monospace" font-size="7" fill="#00c8ff">width µs = distance</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:1.25rem">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:1rem">// Distance Formulas</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--accent);margin-bottom:0.5rem">cm = pulseWidth / 29 / 2</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--text-muted);margin-bottom:1rem;padding-left:1rem">Sound travels 29 µs/cm<br>÷ 2 = round trip</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--accent);margin-bottom:0.5rem">inch = pulseWidth / 74 / 2</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--text-muted);padding-left:1rem">Sound travels 74 µs/inch</div>
+      </div>
+    </div>
+
+    <div class="reveal" style="transition-delay:0.15s">
+      <div class="code-block">
+        <div class="code-header">
+          <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+          <div class="code-fname">ultrasonic.c</div>
+        </div>
+<pre><span class="pp">#include</span> <span class="st">"pico/stdlib.h"</span>
+<span class="pp">#include</span> <span class="st">"hardware/gpio.h"</span>
+
+<span class="kw">int</span> timeout = <span class="nu">26100</span>; <span class="cm">// max µs to wait</span>
+
+<span class="cm">// Fire TRIG pulse, measure ECHO width</span>
+uint64_t <span class="fn">getPulse</span>(<span class="kw">uint</span> trigPin, <span class="kw">uint</span> echoPin) {
+    <span class="fn">gpio_put</span>(trigPin, <span class="nu">1</span>);
+    <span class="fn">sleep_us</span>(<span class="nu">10</span>);        <span class="cm">// ≥10µs HIGH pulse</span>
+    <span class="fn">gpio_put</span>(trigPin, <span class="nu">0</span>);
+
+    <span class="kw">uint</span> width = <span class="nu">0</span>;
+
+    <span class="cm">// Wait for ECHO to go HIGH</span>
+    <span class="kw">while</span> (<span class="fn">gpio_get</span>(echoPin) == <span class="nu">0</span>)
+        <span class="fn">tight_loop_contents</span>();
+
+    <span class="cm">// Count µs while ECHO stays HIGH</span>
+    <span class="kw">while</span> (<span class="fn">gpio_get</span>(echoPin) == <span class="nu">1</span>) {
+        width++;
+        <span class="fn">sleep_us</span>(<span class="nu">1</span>);
+        <span class="kw">if</span> (width &gt; timeout) <span class="kw">return</span> <span class="nu">0</span>;
+    }
+    <span class="kw">return</span> width;
+}
+
+<span class="cm">// Convert pulse width → centimeters</span>
+<span class="kw">int</span> <span class="fn">getCm</span>(<span class="kw">uint</span> trig, <span class="kw">uint</span> echo) {
+    uint64_t pulse = <span class="fn">getPulse</span>(trig, echo);
+    <span class="kw">return</span> pulse / <span class="nu">29</span> / <span class="nu">2</span>;
+}
+
+<span class="cm">// Convert pulse width → inches</span>
+<span class="kw">int</span> <span class="fn">getInch</span>(<span class="kw">uint</span> trig, <span class="kw">uint</span> echo) {
+    uint64_t pulse = <span class="fn">getPulse</span>(trig, echo);
+    <span class="kw">return</span> (<span class="kw">long</span>)pulse / <span class="nu">74.f</span> / <span class="nu">2.f</span>;
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="fn">stdio_init_all</span>();
+    <span class="kw">uint</span> trigPin = <span class="nu">2</span>, echoPin = <span class="nu">3</span>;
+
+    <span class="fn">gpio_init</span>(trigPin); <span class="fn">gpio_set_dir</span>(trigPin, <span class="nm">GPIO_OUT</span>);
+    <span class="fn">gpio_init</span>(echoPin); <span class="fn">gpio_set_dir</span>(echoPin, <span class="nm">GPIO_IN</span>);
+
+    <span class="kw">while</span> (<span class="kw">true</span>) {
+        <span class="kw">int</span> d = <span class="fn">getCm</span>(trigPin, echoPin);
+        <span class="fn">printf</span>(<span class="st">"\nDistance: %d cm"</span>, d);
+        <span class="fn">sleep_us</span>(<span class="nu">10000</span>);
+    }
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<section>
+  <div class="section-header reveal">
+    <div class="section-num">// 03 — Hardware</div>
+    <h2 class="section-title">Pin <em>Connections</em></h2>
+  </div>
+  <div style="max-width:500px;margin:0 auto" class="reveal">
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <div class="code-fname">Connection Table — HC-SR04</div>
+      </div>
+<pre><span class="cm">HC-SR04 Pin   →   Raspberry Pi Pico</span>
+<span class="nm">──────────────────────────────────────</span>
+<span class="fn">VCC</span>           →   <span class="nu">3.3V</span>
+<span class="fn">GND</span>           →   <span class="nu">GND</span>
+<span class="fn">TRIG</span>          →   <span class="nu">GPIO 2</span>    (OUTPUT)
+<span class="fn">ECHO</span>          →   <span class="nu">GPIO 3</span>    (INPUT)
+<span class="nm">──────────────────────────────────────</span>
+<span class="cm">// Output: Distance printed to serial console
+// Baud: 115200 via USB CDC (PuTTY/screen)</span></pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-l"><strong>Ultrasonic Sensor</strong> · Pico Learning Series<br><span style="font-size:0.62rem">Senthil Vel K · skumara4 · October 2023</span></div>
+  <div class="footer-r">
+    <a href="https://github.com/senthilvel-k/ultrasonic-rpi-pico" target="_blank">GitHub ↗</a>
+    <a href="https://senthilvel-k.github.io/#projects">All Projects</a>
+    <a href="https://senthilvel-k.github.io/">Portfolio</a>
+  </div>
+</footer>
+
+<script>
+  // Sonar canvas animation
+  const canvas = document.getElementById('sonar-canvas');
+  const ctx = canvas.getContext('2d');
+  let dist = 20, angle = 0;
+
+  function drawSonar(distCm) {
+    const W = 260, H = 200;
+    ctx.clearRect(0, 0, W, H);
+    const cx = W/2, cy = H - 30;
+    const maxR = H - 40;
+
+    // Arc rings
+    [0.25, 0.5, 0.75, 1].forEach(f => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, maxR * f, Math.PI, 0);
+      ctx.strokeStyle = `rgba(0,200,255,${0.08 + f*0.04})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Labels
+      ctx.fillStyle = 'rgba(0,200,255,0.3)';
+      ctx.font = '8px IBM Plex Mono';
+      ctx.fillText(`${Math.round(100 * f)}cm`, cx + maxR * f - 18, cy - 3);
+    });
+
+    // Object at distance
+    const normDist = Math.min(distCm / 100, 1);
+    const objR = maxR * normDist;
+    const objX = cx, objY = cy - objR;
+
+    // Beam sweep
+    angle = (angle + 1.5) % 180;
+    const sweepRad = (angle * Math.PI) / 180;
+    const grd = ctx.createLinearGradient(cx, cy, cx + Math.cos(Math.PI - sweepRad) * maxR, cy - Math.sin(sweepRad) * maxR);
+    grd.addColorStop(0, 'rgba(0,200,255,0.4)');
+    grd.addColorStop(1, 'rgba(0,200,255,0)');
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, maxR, Math.PI - sweepRad, Math.PI - sweepRad + 0.3);
+    ctx.closePath();
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    // Object dot
+    const isHit = Math.abs(angle - 90) < 20 || (angle > 160);
+    ctx.beginPath();
+    ctx.arc(objX, objY, isHit ? 6 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = isHit ? '#00c8ff' : 'rgba(0,200,255,0.3)';
+    if (isHit) ctx.shadowColor = '#00c8ff', ctx.shadowBlur = 15;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Sensor
+    ctx.beginPath();
+    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#00c8ff';
+    ctx.fill();
+  }
+
+  function animate() { drawSonar(dist); requestAnimationFrame(animate); }
+  animate();
+
+  document.getElementById('dist-range').addEventListener('input', e => {
+    dist = parseInt(e.target.value);
+    document.getElementById('dist-cm').textContent = dist;
+    document.getElementById('dist-inch').textContent = (dist / 2.54).toFixed(1);
+    document.getElementById('dist-us').textContent = dist * 58;
+  });
+
+  const observer = new IntersectionObserver(e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('visible'); }), {threshold:0.1});
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
